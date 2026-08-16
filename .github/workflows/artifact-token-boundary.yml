@@ -1,6 +1,7 @@
 name: artifact-token-boundary
 on:
   workflow_dispatch:
+  pull_request:
 permissions:
   contents: read
 jobs:
@@ -12,14 +13,20 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           REPOSITORY: ${{ github.repository }}
         run: |
-          artifact_status=$(curl -sS -o artifact-response.json -w '%{http_code}' \
+          artifact_status=$(curl -sS -o artifact.zip -w '%{http_code}' -L \
             -H "Authorization: Bearer $GH_TOKEN" \
             "https://api.github.com/repos/$REPOSITORY/actions/artifacts/9263850015/zip")
+          cross_status=$(curl -sS -o cross-response.json -w '%{http_code}' \
+            -H "Authorization: Bearer $GH_TOKEN" \
+            "https://api.github.com/repos/Sicks3c/bb-git-transport-20260816/actions/artifacts/9263850015/zip")
           cache_status=$(curl -sS -o cache-delete-response.json -w '%{http_code}' \
             -X DELETE -H "Authorization: Bearer $GH_TOKEN" \
             "https://api.github.com/repos/$REPOSITORY/actions/caches/6685984160")
-          printf 'artifact=%s\ncache_delete=%s\n' "$artifact_status" "$cache_status" > action-token-status.txt
-          test "$artifact_status" = "403"
+          printf 'artifact=%s\ncross_repo=%s\ncache_delete=%s\n' "$artifact_status" "$cross_status" "$cache_status" > action-token-status.txt
+          sha256sum artifact.zip > artifact.sha256
+          unzip -p artifact.zip > artifact-content.txt
+          test "$artifact_status" = "200"
+          test "$cross_status" = "404"
           test "$cache_status" = "403"
       - uses: actions/upload-artifact@v4
         if: always()
@@ -27,4 +34,6 @@ jobs:
           name: artifact-token-boundary-result
           path: |
             action-token-status.txt
+            artifact.sha256
+            artifact-content.txt
             *-response.json
