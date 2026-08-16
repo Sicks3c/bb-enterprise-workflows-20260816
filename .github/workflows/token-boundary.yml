@@ -1,0 +1,29 @@
+name: token-boundary
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Attempt protected ref update with read-only workflow token
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPOSITORY: ${{ github.repository }}
+        run: |
+          status=$(curl -sS -o response.json -w '%{http_code}' \
+            -X PATCH \
+            -H "Authorization: Bearer $GH_TOKEN" \
+            -H 'Accept: application/vnd.github+json' \
+            "https://api.github.com/repos/$REPOSITORY/git/refs/heads/main" \
+            -d '{"sha":"29039385abb80e5ffdb7db95515f3a84cc731953","force":true}')
+          echo "$status" > status.txt
+          test "$status" = "403"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: token-boundary-result
+          path: |
+            status.txt
+            response.json
