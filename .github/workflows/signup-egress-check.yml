@@ -1,0 +1,18 @@
+name: signup-egress-check
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check protected signup surface at low volume
+        shell: bash
+        run: |
+          set -euo pipefail
+          code="$(curl -sS -o signup.html -w '%{http_code}' https://github.com/signup)"
+          bytes="$(wc -c < signup.html)"
+          if grep -q 'Access is temporarily restricted' signup.html; then restricted=yes; else restricted=no; fi
+          if grep -qE 'Create your account|Sign up to GitHub' signup.html; then form=yes; else form=no; fi
+          printf 'status=%s bytes=%s restricted=%s form=%s\n' "$code" "$bytes" "$restricted" "$form"
