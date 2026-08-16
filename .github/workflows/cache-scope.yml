@@ -15,21 +15,24 @@ jobs:
   cache:
     runs-on: ubuntu-latest
     steps:
-      - run: echo "${{ github.ref }}:${{ github.run_id }}" > payload.txt
+      - if: inputs.mode == 'save'
+        run: |
+          mkdir -p cachedata
+          echo "${{ github.ref }}:${{ github.run_id }}" > cachedata/payload.txt
       - uses: actions/cache/restore@v4
         id: restore
         with:
-          path: restored
+          path: cachedata
           key: ${{ inputs.cache_key }}
       - name: Record restore result
         run: |
           echo "cache-hit=${{ steps.restore.outputs.cache-hit }}" > cache-result.txt
           echo "ref=${{ github.ref }}" >> cache-result.txt
-          find restored -type f -maxdepth 2 -print -exec cat {} \; >> cache-result.txt 2>/dev/null || true
+          find cachedata -type f -maxdepth 2 -print -exec cat {} \; >> cache-result.txt 2>/dev/null || true
       - uses: actions/cache/save@v4
         if: inputs.mode == 'save'
         with:
-          path: payload.txt
+          path: cachedata
           key: ${{ inputs.cache_key }}
       - uses: actions/upload-artifact@v4
         with:
