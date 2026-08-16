@@ -1,0 +1,30 @@
+name: artifact-token-boundary
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Attempt prior-run artifact download and cache deletion
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPOSITORY: ${{ github.repository }}
+        run: |
+          artifact_status=$(curl -sS -o artifact-response.json -w '%{http_code}' \
+            -H "Authorization: Bearer $GH_TOKEN" \
+            "https://api.github.com/repos/$REPOSITORY/actions/artifacts/9263850015/zip")
+          cache_status=$(curl -sS -o cache-delete-response.json -w '%{http_code}' \
+            -X DELETE -H "Authorization: Bearer $GH_TOKEN" \
+            "https://api.github.com/repos/$REPOSITORY/actions/caches/6685984160")
+          printf 'artifact=%s\ncache_delete=%s\n' "$artifact_status" "$cache_status" > action-token-status.txt
+          test "$artifact_status" = "403"
+          test "$cache_status" = "403"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: artifact-token-boundary-result
+          path: |
+            action-token-status.txt
+            *-response.json
