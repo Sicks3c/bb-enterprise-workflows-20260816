@@ -1,0 +1,19 @@
+name: fixture
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  fixture:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Create inert artifact
+        run: echo "researcher-owned-fixture" > artifact.txt
+      - uses: actions/cache/save@v4
+        with:
+          path: artifact.txt
+          key: bb-cache-${{ github.run_id }}
+      - uses: actions/upload-artifact@v4
+        with:
+          name: inert-artifact
+          path: artifact.txt
