@@ -1,0 +1,37 @@
+name: cache-scope
+on:
+  workflow_dispatch:
+    inputs:
+      mode:
+        required: true
+        type: choice
+        options: [save, restore]
+      cache_key:
+        required: true
+        type: string
+permissions:
+  contents: read
+jobs:
+  cache:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo "${{ github.ref }}:${{ github.run_id }}" > payload.txt
+      - uses: actions/cache/restore@v4
+        id: restore
+        with:
+          path: restored
+          key: ${{ inputs.cache_key }}
+      - name: Record restore result
+        run: |
+          echo "cache-hit=${{ steps.restore.outputs.cache-hit }}" > cache-result.txt
+          echo "ref=${{ github.ref }}" >> cache-result.txt
+          find restored -type f -maxdepth 2 -print -exec cat {} \; >> cache-result.txt 2>/dev/null || true
+      - uses: actions/cache/save@v4
+        if: inputs.mode == 'save'
+        with:
+          path: payload.txt
+          key: ${{ inputs.cache_key }}
+      - uses: actions/upload-artifact@v4
+        with:
+          name: cache-scope-result
+          path: cache-result.txt
